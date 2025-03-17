@@ -1,0 +1,5 @@
+columns format version: 1
+3 columns:
+`uuid` UUID
+`name` String
+`description` String

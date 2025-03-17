@@ -1,5 +1,5 @@
 -- Таблица для значений временных рядов
-CREATE TABLE TimeSeriesValue (
+CREATE TABLE IF NOT EXISTS TimeSeriesValue (
     timestamp DateTime,
     value Float64,
     timeseries_uuid UUID,
@@ -8,29 +8,32 @@ CREATE TABLE TimeSeriesValue (
 ORDER BY (timestamp, timeseries_uuid);
 
 -- Таблица для временных рядов
-CREATE TABLE TimeSeries (
+CREATE TABLE IF NOT EXISTS TimeSeries (
     uuid UUID,
     name String,
     description String,
     unit_of_measure String,
     snapshot_uuid UUID,
-    PRIMARY KEY uuid
 ) ENGINE = MergeTree()
-ORDER BY uuid;
+ORDER BY uuid
+PRIMARY KEY uuid;
 
 -- Таблица для слепков
-CREATE TABLE Snapshot (
-    uuid UUID,
-    timestamp DateTime,
-    datasource_uuid UUID,
-    PRIMARY KEY uuid
-) ENGINE = MergeTree()
-ORDER BY uuid;
-
--- Таблица для источников данных
-CREATE TABLE DataSource (
+CREATE TABLE IF NOT EXISTS Snapshot (
     uuid UUID,
     name String,
-    PRIMARY KEY uuid
+    description String,
+    timestamp DateTime,
+    datasource_uuid UUID,
 ) ENGINE = MergeTree()
-ORDER BY uuid;
+ORDER BY uuid
+PRIMARY KEY uuid;
+
+-- Таблица для источников данных
+CREATE TABLE IF NOT EXISTS DataSource (
+    uuid UUID,
+    name String,
+    description String,
+) ENGINE = MergeTree()
+ORDER BY uuid
+PRIMARY KEY uuid;

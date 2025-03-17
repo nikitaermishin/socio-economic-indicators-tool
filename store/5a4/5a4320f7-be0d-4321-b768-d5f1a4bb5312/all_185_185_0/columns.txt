@@ -1,0 +1,7 @@
+columns format version: 1
+5 columns:
+`uuid` UUID
+`name` String
+`description` String
+`unit_of_measure` String
+`snapshot_uuid` UUID
