@@ -8,10 +8,14 @@ class Snapshot:
     timestamp: str
     uuid: str
     timeseries: list[models.timeseries.Timeseries]
+    author: str
 
-    def __init__(self, timestamp, timeseries):
+    def __init__(self, timestamp, author, timeseries, uuid_=None):
         self.timestamp = timestamp
-        self.uuid = uuid.uuid4()
+        if uuid_ is None:
+            uuid_ = uuid.uuid4()
+        self.uuid = uuid_
+        self.author = author
 
         self.timeseries = timeseries
 

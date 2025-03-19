@@ -15,6 +15,7 @@ import models.datasource
 class AppStatus:
     current_page = reactive.value(("auth_page_ui", {}))
     snapshot_load_state = reactive.value(0)
+    current_user = reactive.value(None)
 
     def get_current_page(self):
         return self.current_page.get()
@@ -95,5 +96,5 @@ def _():
         elif page[0] == "snapshots_list_page_ui":
             view.snapshots_list_page.snapshots_list_page_ui("snapshots_list_page_ui", timeseries_repository, app_status)
         elif page[0] == "datasources_list_page_ui":
-            view.datasources_list_page.datasources_list_page_ui("datasources_list_page_ui", datasources, app_status)
+            view.datasources_list_page.datasources_list_page_ui("datasources_list_page_ui", datasources, timeseries_repository, app_status)
 

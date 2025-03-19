@@ -16,8 +16,7 @@ def snapshots_list_page_ui(input, output, session, repository: repository.timese
 
             @render.data_frame
             def snapshots_list():
-                return render.DataGrid(snapshots.reset_index(), selection_mode="row", width="100%")
-            
+                return render.DataGrid(snapshots.sort_values(by='timestamp', ascending=False), selection_mode="row", width="100%", filters=True)
                 
     @reactive.effect
     @reactive.event(snapshots_list.cell_selection, ignore_init=True)

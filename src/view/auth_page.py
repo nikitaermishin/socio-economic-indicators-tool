@@ -34,4 +34,7 @@ def auth_page_ui(input, output, session, repository: repository.user_repository.
         password = input.password_input()
 
         if (repository.check_credentials(login, password)):
+            app_status.current_user.set(login)
             app_status.open_main_select_page()
+        else:
+            ui.notification_show("Invalid login or password", type="error")

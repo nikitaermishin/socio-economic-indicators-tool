@@ -38,7 +38,7 @@ class CBR_datasource(Datasource):
     def __init__(self, repository):
         super().__init__(repository)
 
-    def get_data(self, kwargs):
+    def get_data(self, kwargs, author):
         """
         Достаем данные по API ЦБ РФ
         Дока https://cbr.ru/statistics/data-service/APIdocumentation/
@@ -50,7 +50,7 @@ class CBR_datasource(Datasource):
         response.raise_for_status()
 
         print(response.text)
-        snapshot = self.to_snapshot(json.loads(response.text))
+        snapshot = self.to_snapshot(json.loads(response.text), author)
 
         print('\n\n\n\n\n')
         print (snapshot.asdict())
@@ -129,13 +129,13 @@ class CBR_datasource(Datasource):
         except Exception as err:
             print(traceback.format_exc())
 
-    def to_snapshot(self, json_):
+    def to_snapshot(self, json_, author):
         assert len(json_['SType']) == 1
 
         timeseries_values: dict[int, models.timeseries.TimeseriesValue] = {}
         for data_elem in json_['RawData']:
             elem_id = data_elem['element_id']
-            if elem_id not in timeseries_values:
+            if elem_id not in timeseries_values.keys():
                 timeseries_values[elem_id] = []
             timeseries_values[elem_id].append(models.timeseries.TimeseriesValue(timestamp=data_elem['date'], value=data_elem['obs_val']))
 
@@ -143,11 +143,15 @@ class CBR_datasource(Datasource):
         timeseries: list[models.timeseries.Timeseries] = []
         for header in json_['headerData']:
             name = header['elname']
+
+            # print(f"{name} : {len(timeseries_values[header['id']])}")
             timeseries.append(models.timeseries.Timeseries(name=name, description='', unit_of_measure='', timeseries_values=timeseries_values[header['id']]))
 
-        return models.snapshot.Snapshot(timestamp=datetime.datetime.now(), timeseries=timeseries)
+        # print(f"TOTAL : {len(timeseries)}")
+
+        return models.snapshot.Snapshot(timestamp=datetime.datetime.now(), author=author, timeseries=timeseries)
     
-    def snapshot_requester(self, id, repository, snapshot_load_state):
+    def snapshot_requester(self, id, repository, snapshot_load_state, author):
         @module
         def _(input, output, session):
             publications = self.get_publication_names()
@@ -219,7 +223,7 @@ class CBR_datasource(Datasource):
                         kwargs['measureId'] = input.measure_id_select()
 
                     print(kwargs)
-                    snapshot = self.get_data(kwargs)
+                    snapshot = self.get_data(kwargs, author)
                     repository.insert_snapshot(snapshot, self.uuid)
 
                     #invalidating state

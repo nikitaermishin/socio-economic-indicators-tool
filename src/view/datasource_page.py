@@ -17,7 +17,7 @@ def datasource_page_ui(input, output, session, datasource: models.datasource.Dat
         with ui.card():
             ui.card_header("Создание запроса на выгрузку данных")
 
-            datasource.snapshot_requester("snapshot_requester", repository, app_status.snapshot_load_state)
+            datasource.snapshot_requester("snapshot_requester", repository, app_status.snapshot_load_state, app_status.current_user.get())
 
         with ui.card():
             ui.card_header("Список выгруженных snapshot'ов")
@@ -28,7 +28,7 @@ def datasource_page_ui(input, output, session, datasource: models.datasource.Dat
                 kwargs = {
                     'datasource_names': [datasource.name]
                 }
-                return render.DataGrid(repository.get_snapshots(**kwargs).sort_values(by='timestamp', ascending=False), selection_mode="row", width="100%")
+                return render.DataGrid(repository.get_snapshots(**kwargs).sort_values(by='timestamp', ascending=False), selection_mode="row", width="100%", filters=True)
             
             
             

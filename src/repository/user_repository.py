@@ -18,14 +18,10 @@ class UserRepository:
         except psycopg2.OperationalError as exc:
             traceback.format_exc()
 
-    # TODO сделать нормальный хешик
-    def hash_password(self, password: str) -> str:
-        return password
-
     def check_credentials(self, login, password) -> bool:
         try:
             cursor = self.connection.cursor()
-            cursor.execute("select count(*) as count from socio_economic_indicators_tool.users where login=%s and password_hash=%s", [login, self.hash_password(password)])
+            cursor.execute("select count(*) as count from socio_economic_indicators_tool.users where login=%s and password_hash=crypt(%s, password_hash)", [login, password])
             
             check_result = cursor.fetchone()[0] == 1
             cursor.close()

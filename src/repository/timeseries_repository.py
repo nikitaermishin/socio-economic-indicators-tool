@@ -18,7 +18,7 @@ class TimeSeriesRepository:
             datasource_names_str = ', '.join(f"'{name}'" for name in datasource_names)
 
             query = f"""
-            SELECT s.uuid, s.timestamp, d.name
+            SELECT s.uuid, s.timestamp, d.name, s.author
             FROM Snapshot s
             JOIN DataSource d ON s.datasource_uuid = d.uuid
             WHERE 1=1
@@ -37,6 +37,40 @@ class TimeSeriesRepository:
             print('exc')
             print(exc)
 
+    def get_datasource_info(self, datasource_uuid: str):
+        print('DEBUG: get_datasource_info')
+
+        datasource_info = {}
+
+        last_snapshot_query = f"""
+            SELECT 
+                s.timestamp,
+                s.author,
+            FROM 
+                Snapshot s
+            JOIN 
+                DataSource d ON s.datasource_uuid = d.uuid
+            WHERE 
+                d.uuid = '{datasource_uuid}'
+            ORDER BY 
+                s.timestamp DESC
+            LIMIT 1
+        """
+
+        last_snapshot_result = self.client.query(last_snapshot_query)
+        if last_snapshot_result.result_rows:
+            datasource_info['last_snapshot_timestamp'] = str(last_snapshot_result.result_rows[0][0])
+            datasource_info['last_snapshot_author'] = last_snapshot_result.result_rows[0][1]
+        
+        snapshots_count_query = f"""
+            SELECT COUNT(*) FROM Snapshot s2 WHERE s2.datasource_uuid = '{datasource_uuid}'
+        """
+
+        snapshots_count_result = self.client.query(snapshots_count_query)
+        datasource_info['snapshots_count'] = snapshots_count_result.result_rows[0][0]
+
+        return datasource_info
+    
     def try_insert_datasource(self, uuid: str, name: str, description: str):
         try:
             print('DEBUG: try_insert_datasource')
@@ -58,8 +92,8 @@ class TimeSeriesRepository:
     def insert_snapshot(self, snapshot: models.snapshot.Snapshot, datasource_uuid):
         print('DEBUG: insert_snapshot')
         query = f"""
-        INSERT INTO socio_economic_indicators_tool.Snapshot (uuid, timestamp, datasource_uuid)
-        VALUES ('{snapshot.uuid}', '{snapshot.timestamp}', '{datasource_uuid}')
+        INSERT INTO socio_economic_indicators_tool.Snapshot (uuid, timestamp, datasource_uuid, author)
+        VALUES ('{snapshot.uuid}', '{snapshot.timestamp}', '{datasource_uuid}', '{snapshot.author}')
         """
         self.client.query(query)
 
@@ -113,7 +147,7 @@ class TimeSeriesRepository:
                 tsv_dict[row[0]].append({'timestamp': timestamp, 'value': value})
 
             ts_query = f"""
-            SELECT ts.uuid, ts.name, ts.description, ts.unit_of_measure FROM socio_economic_indicators_tool.TimeSeries ts WHERE ts.snapshot_uuid = '{uuid}'
+            SELECT ts.uuid, ts.name, ts.description, ts.unit_of_measure, FROM socio_economic_indicators_tool.TimeSeries ts WHERE ts.snapshot_uuid = '{uuid}'
             """
             ts_result = self.client.query(ts_query)
             print('ts_len', len(ts_result.result_rows))
@@ -121,10 +155,10 @@ class TimeSeriesRepository:
 
             ts_list = []
             for row in ts_result.result_rows:
-                ts_uuid, name, description, unit_of_measure = row[0], row[1], row[2], row[3]
+                ts_uuid, name, description, unit_of_measure = row[0], row[1], row[2], row[3],
 
                 ts_list.append(models.timeseries.Timeseries(
-                    uuid=ts_uuid,
+                    uuid_=ts_uuid,
                     name=name,
                     description=description,
                     unit_of_measure=unit_of_measure,
@@ -134,9 +168,17 @@ class TimeSeriesRepository:
                     ) for tsv in tsv_dict[ts_uuid]]
                 ))
 
+            s_query = f"""
+            SELECT s.timestamp, s.author FROM socio_economic_indicators_tool.Snapshot s WHERE s.uuid = '{uuid}'
+            LIMIT 1
+            """
+            s_result = self.client.query(s_query)
+
             return models.snapshot.Snapshot(
-                timestamp='',
-                timeseries=ts_list
+                timestamp=s_result.result_rows[0][0],
+                author=s_result.result_rows[0][1],
+                timeseries=ts_list,
+                uuid_=uuid
             )
 
 

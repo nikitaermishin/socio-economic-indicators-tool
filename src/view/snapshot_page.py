@@ -10,6 +10,15 @@ def snapshot_page_ui(input, output, session, repository, snapshot_uuid):
     snapshot = repository.get_snapshot_by_uuid(snapshot_uuid)
     dataframe = snapshot.to_dataframe().reset_index()
 
+    with ui.layout_columns():
+        with ui.value_box():
+            "Дата сбора слепка"
+            str(snapshot.timestamp) if snapshot.timestamp else '-'
+        with ui.value_box():
+            "Автор слепка"
+            snapshot.author if snapshot.author else '-'
+
+
     with ui.layout_columns(
         col_widths={"sm": (12, 12)},
     ):

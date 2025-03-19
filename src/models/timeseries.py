@@ -22,12 +22,14 @@ class Timeseries:
 
     timeseries_values: list[TimeseriesValue]
 
-    def __init__(self, name, description, unit_of_measure, timeseries_values, uuid=uuid.uuid4()):
+    def __init__(self, name, description, unit_of_measure, timeseries_values, uuid_=None):
         self.name = name
         self.description = description
         self.unit_of_measure = unit_of_measure
         self.timeseries_values = timeseries_values
-        self.uuid = uuid
+        if uuid_ is None:
+            uuid_ = uuid.uuid4()
+        self.uuid = uuid_
 
     def asdict(self):
         return {

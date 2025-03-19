@@ -1,0 +1,6 @@
+columns format version: 1
+4 columns:
+`uuid` UUID
+`timestamp` DateTime
+`datasource_uuid` UUID
+`author` String

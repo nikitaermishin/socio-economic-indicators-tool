@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS Snapshot (
     uuid UUID,
     name String,
     description String,
+    load_author String,
     timestamp DateTime,
     datasource_uuid UUID,
 ) ENGINE = MergeTree()

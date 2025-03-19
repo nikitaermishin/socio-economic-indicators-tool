@@ -6,8 +6,10 @@ def main_select_page_ui(input, output, session, app_status):
     @render.express
     def _():
         with ui.layout_columns(
-            col_widths={"sm": (6, 6)},
+            col_widths={"sm": (12, 6, 6)},
         ):
+            with ui.card():
+                f"Текущий авторизованный пользователь: {app_status.current_user.get()}"
             with ui.card():
                 ui.input_action_button("go_to_datasources_list_page", "Перейте к списку источников данных")
 

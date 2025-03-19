@@ -1,1 +1,0 @@
-{"columns":[{"kind":"Sparse","name":"description","num_defaults":175,"num_rows":175},{"kind":"Default","name":"name","num_defaults":0,"num_rows":175},{"kind":"Default","name":"snapshot_uuid","num_defaults":0,"num_rows":175},{"kind":"Sparse","name":"unit_of_measure","num_defaults":175,"num_rows":175},{"kind":"Default","name":"uuid","num_defaults":0,"num_rows":175}],"version":0}
