@@ -1,11 +1,15 @@
 import pandas as pd
-import models.timeseries
+import json
 import uuid
+import datetime
+
+import models.timeseries
+
 
 class Snapshot:
     name: str
     description: str
-    timestamp: str
+    timestamp: datetime.datetime
     uuid: str
     timeseries: list[models.timeseries.Timeseries]
     author: str
@@ -16,20 +20,26 @@ class Snapshot:
             uuid_ = uuid.uuid4()
         self.uuid = uuid_
         self.author = author
-
         self.timeseries = timeseries
 
-    def asdict(self):
-        pass
+    def serialize(self):
         return {
             # "name": self.name,
-            "timestamp": self.timestamp,
-            "timeseries": [timeseries.asdict() for timeseries in self.timeseries]
+            # "description": self.description,
+            "timestamp": str(self.timestamp),
+            "uuid": self.uuid,
+            "author": self.author,
+            "data": json.loads(
+                self.to_dataframe().to_json(orient="records", force_ascii=False)
+            )
         }
-    
+
     def to_dataframe(self):
         assert len(self.timeseries) != 0
         index = [tsv.timestamp for tsv in self.timeseries[0].timeseries_values]
 
-        data = {ts.name : [tsv.value for tsv in ts.timeseries_values] for ts in self.timeseries}
+        data = {
+            ts.name: [tsv.value for tsv in ts.timeseries_values]
+            for ts in self.timeseries
+        }
         return pd.DataFrame(data=data, index=index)

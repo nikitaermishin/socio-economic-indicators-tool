@@ -1,7 +1,9 @@
 import uuid
+import datetime
+
 
 class TimeseriesValue:
-    timestamp: str
+    timestamp: datetime.date
     value: float
 
     def __init__(self, timestamp, value):
@@ -14,12 +16,12 @@ class TimeseriesValue:
             "value": self.value
         }
 
+
 class Timeseries:
     name: str
     description: str
     unit_of_measure: str
     uuid: str
-
     timeseries_values: list[TimeseriesValue]
 
     def __init__(self, name, description, unit_of_measure, timeseries_values, uuid_=None):

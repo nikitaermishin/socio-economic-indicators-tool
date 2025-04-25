@@ -1,42 +1,62 @@
-from shiny import reactive
-from shiny.express import input, ui, render, module
+from shiny import reactive, ui
 
 import models.datasource
 import repository.timeseries_repository
 
-@module
-def datasource_block_ui(input, output, session, datasource: models.datasource.Datasource, repository: repository.timeseries_repository.TimeSeriesRepository, app_status):
-    @render.express
-    def _():
-        with ui.layout_columns(
-            col_widths={"sm": (12)},
-        ):
-            with ui.card():
-                ui.card_header(datasource.name)
 
-                datasource.description
-
-                with ui.layout_columns():
-                    datasource_info = repository.get_datasource_info(datasource.uuid)
-
-                    with ui.value_box():
-                        "Дата сбора последнего слепка"
-                        datasource_info['last_snapshot_timestamp'] if 'last_snapshot_timestamp' in datasource_info else '-'
-                    with ui.value_box():
-                        "Автор запуска последнего сбора слепка"
-                        datasource_info['last_snapshot_author'] if 'last_snapshot_author' in datasource_info else '-'
-                    with ui.value_box():
-                        "Число сохраненных в базе слепков"
-                        datasource_info['snapshots_count'] if 'snapshots_count' in datasource_info else 0
-
-                ui.input_action_button("open_datasource", "Открыть страницу источника данных")
-
-    @reactive.effect
-    @reactive.event(input.open_datasource, ignore_init=True)
-    def _():
-        app_status.open_datasource_page(datasource)
-
-@module
-def datasources_list_page_ui(input, output, session, datasources: list[models.datasource.Datasource], repository, app_status):
+def datasources_list_page_ui(
+    datasources: list[models.datasource.Datasource],
+    repository: repository.timeseries_repository.TimeSeriesRepository
+):
+    blocks = []
     for datasource in datasources:
-        datasource_block_ui(datasource.uuid.replace('-', '_'), datasource, repository, app_status)
+        datasource_info = repository.get_datasource_info(datasource.uuid)
+
+        block = ui.layout_columns(
+            ui.card(
+                ui.card_header(datasource.name),
+                ui.p(datasource.description),
+                ui.layout_columns(
+                    ui.value_box(
+                        "Дата сбора последнего слепка",
+                        datasource_info.get('last_snapshot_timestamp', '-'),
+                    ),
+                    ui.value_box(
+                        "Автор запуска последнего сбора слепка",
+                        datasource_info.get('last_snapshot_author', '-'),
+                    ),
+                    ui.value_box(
+                        "Число сохраненных в базе слепков",
+                        datasource_info.get('snapshots_count', 0),
+                    ),
+                ),
+                ui.input_action_button(
+                    f"open_datasource_{datasource.get_ui_id()}",
+                    "Открыть страницу источника данных"
+                )
+            ),
+            col_widths={"sm": (12)},
+        )
+        blocks.append(block)
+
+    return ui.div(*blocks)
+
+
+def datasources_list_page_server(
+    datasources: list[models.datasource.Datasource],
+    app_status
+):
+    def server_func(input, output, session):
+        for datasource in datasources:
+            button_id = f"open_datasource_{datasource.get_ui_id()}"
+
+            @reactive.effect
+            @reactive.event(
+                lambda ds=datasource, bid=button_id: getattr(input, bid)(),
+                ignore_init=True
+            )
+            def handle_open_datasource(ds=datasource):
+                print(f"Открываем источник данных: {ds.name}")
+                app_status.open_datasource_page(ds)
+
+    return server_func

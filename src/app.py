@@ -1,5 +1,9 @@
-from shiny import reactive
-from shiny.express import input, ui, render, module
+from starlette.applications import Starlette
+from starlette.routing import Route, Mount
+from starlette.requests import Request
+from starlette.responses import JSONResponse, PlainTextResponse
+from shiny import reactive, ui, App
+import uvicorn
 
 import repository.timeseries_repository
 import repository.user_repository
@@ -10,6 +14,7 @@ import view.main_select_page
 import view.snapshots_list_page
 import view.datasources_list_page
 import models.datasource
+from api import get_api_routes
 
 
 class AppStatus:
@@ -19,12 +24,13 @@ class AppStatus:
 
     def get_current_page(self):
         return self.current_page.get()
-    
+
     def open_snapshot_page(self, uuid):
         self.current_page.set(("snapshot_page_ui", {"uuid": uuid}))
 
     def open_datasource_page(self, datasource):
-        self.current_page.set(("datasource_page_ui", {"datasource": datasource}))
+        self.current_page.set(
+            ("datasource_page_ui", {"datasource": datasource}))
 
     def open_main_select_page(self):
         self.current_page.set(("main_select_page_ui", {}))
@@ -35,66 +41,160 @@ class AppStatus:
     def open_datasources_list_page(self):
         self.current_page.set(("datasources_list_page_ui", {}))
 
-app_status = AppStatus()
 
-@module
-# @reactive.effect
+# The commented-out navbar_ui and page rendering functions are preserved but not formatted
+# as they appear to be older versions of the code
 
-def navbar_ui(input, output, session, app_status):
-    @render.express
-    @reactive.event(app_status.current_page)
-    def _():
-        with reactive.isolate():
-            with ui.navset_bar(
-                title="Socio-economic indicators tool",
-                id="selected_navset_bar",
-            ):
-                page = app_status.get_current_page()
-
-                if page[0] == "auth_page_ui":
-                    return 
-
-                ui.nav_spacer()
-                with ui.nav_control():
-                    ui.input_action_button("navbar_go_to_datasources_list_page", "Список источников")
-
-                with ui.nav_control():
-                    ui.input_action_button("navbar_go_to_snapshots_list_page", "Список слепков")
-
-            @reactive.effect
-            @reactive.event(input.navbar_go_to_datasources_list_page, ignore_init=True)
-            def _():
-                app_status.open_datasources_list_page()
-
-            @reactive.effect
-            @reactive.event(input.navbar_go_to_snapshots_list_page, ignore_init=True)
-            def _():
-                app_status.open_snapshots_list_page()
-
-user_repository = repository.user_repository.UserRepository()
-timeseries_repository = repository.timeseries_repository.TimeSeriesRepository()
-
-datasources = [models.datasource.CBR_datasource(timeseries_repository), models.datasource.Comtrade_datasource, models.datasource.Worldbank_datasource]
+def app_ui(request):
+    return ui.page_fluid(
+        ui.div(id="navbar_container"),
+        ui.div(id="page_content")
+    )
 
 
-navbar_ui("navbar_ui", app_status)
+def app_server():
+    user_repository = repository.user_repository.UserRepository()
+    timeseries_repository = repository.timeseries_repository.TimeSeriesRepository()
 
-@render.express
-@reactive.event(app_status.current_page)
-def _():
-    with reactive.isolate():
-        page = app_status.get_current_page()
+    datasources = [
+        models.datasource.CBR_datasource(timeseries_repository),
+        models.datasource.Comtrade_datasource(timeseries_repository),
+        models.datasource.Worldbank_datasource(timeseries_repository)
+    ]
 
-        if page[0] == "auth_page_ui":
-            view.auth_page.auth_page_ui("auth_page_ui", user_repository, app_status)
-        elif page[0] == "datasource_page_ui":
-            view.datasource_page.datasource_page_ui("datasource_page_ui", page[1]["datasource"], timeseries_repository, app_status)
-        elif page[0] == "snapshot_page_ui":
-            view.snapshot_page.snapshot_page_ui("snapshot_page_ui", timeseries_repository, page[1]['uuid'])
-        elif page[0] == "main_select_page_ui":
-            view.main_select_page.main_select_page_ui("main_select_page_ui", app_status)
-        elif page[0] == "snapshots_list_page_ui":
-            view.snapshots_list_page.snapshots_list_page_ui("snapshots_list_page_ui", timeseries_repository, app_status)
-        elif page[0] == "datasources_list_page_ui":
-            view.datasources_list_page.datasources_list_page_ui("datasources_list_page_ui", datasources, timeseries_repository, app_status)
+    app_status = AppStatus()
 
+    def server_func(input, output, session):
+        # register all server funcs
+        @reactive.effect
+        @reactive.event(app_status.current_page)
+        def handle_page_change():
+            page = app_status.get_current_page()
+
+            ui.remove_ui("#navbar_container *", multiple=True)
+
+            if page[0] == "auth_page_ui":
+                ui.insert_ui(
+                    ui.navset_bar(
+                        ui.nav_spacer(),
+                        title="Socio-economic indicators tool",
+                        id="selected_navset_bar",
+                    ),
+                    "#navbar_container",
+                )
+            else:
+                ui.insert_ui(
+                    ui.navset_bar(
+                        ui.nav_spacer(),
+                        ui.nav_control(
+                            ui.input_action_button(
+                                "navbar_go_to_main_select_page", "Главная страница")
+                        ),
+                        ui.nav_control(
+                            ui.input_action_button(
+                                "navbar_go_to_datasources_list_page", "Список источников")
+                        ),
+                        ui.nav_control(
+                            ui.input_action_button(
+                                "navbar_go_to_snapshots_list_page", "Список слепков")
+                        ),
+                        title="Socio-economic indicators tool",
+                        id="selected_navset_bar",
+                    ),
+                    "#navbar_container",
+                )
+
+            ui.remove_ui("#page_content *")
+
+            print(page)
+
+            if page[0] == "auth_page_ui":
+                ui.insert_ui(view.auth_page.auth_page_ui(),
+                             selector="#page_content")
+                view.auth_page.auth_page_server(
+                    user_repository, app_status)(input, output, session)
+            elif page[0] == "datasource_page_ui":
+                ui.insert_ui(
+                    view.datasource_page.datasource_page_ui(
+                        page[1]["datasource"]),
+                    "#page_content"
+                )
+                view.datasource_page.datasource_page_server(
+                    page[1]["datasource"],
+                    timeseries_repository,
+                    app_status
+                )(input, output, session)
+            elif page[0] == "snapshot_page_ui":
+                ui.insert_ui(
+                    view.snapshot_page.snapshot_page_ui(
+                        timeseries_repository, page[1]['uuid']),
+                    "#page_content"
+                )
+                view.snapshot_page.snapshot_page_server(
+                    timeseries_repository,
+                    page[1]['uuid']
+                )(input, output, session)
+            elif page[0] == "main_select_page_ui":
+                ui.insert_ui(
+                    view.main_select_page.main_select_page_ui(app_status),
+                    "#page_content"
+                )
+                view.main_select_page.main_select_page_server(
+                    app_status)(input, output, session)
+            elif page[0] == "snapshots_list_page_ui":
+                ui.insert_ui(
+                    view.snapshots_list_page.snapshots_list_page_ui(), "#page_content")
+                view.snapshots_list_page.snapshots_list_page_server(
+                    timeseries_repository,
+                    app_status
+                )(input, output, session)
+            elif page[0] == "datasources_list_page_ui":
+                ui.insert_ui(
+                    view.datasources_list_page.datasources_list_page_ui(
+                        datasources, timeseries_repository),
+                    "#page_content"
+                )
+                view.datasources_list_page.datasources_list_page_server(
+                    datasources,
+                    app_status
+                )(input, output, session)
+
+        @reactive.effect
+        @reactive.event(input.navbar_go_to_datasources_list_page, ignore_init=True)
+        def handle_navbar_go_to_datasources_list_page():
+            app_status.open_datasources_list_page()
+
+        @reactive.effect
+        @reactive.event(input.navbar_go_to_snapshots_list_page, ignore_init=True)
+        def handle_navbar_go_to_snapshots_list_page():
+            app_status.open_snapshots_list_page()
+
+        @reactive.effect
+        @reactive.event(input.navbar_go_to_main_select_page, ignore_init=True)
+        def handle_navbar_go_to_main_select_page():
+            app_status.open_main_select_page()
+
+    return server_func
+
+
+shiny_app = App(app_ui, app_server())
+
+routes = [
+    Mount("/api", routes=get_api_routes()),
+    Mount("/", shiny_app),
+]
+
+app = Starlette(routes=routes, debug=True)
+
+print("Available routes:")
+for route in app.routes:
+    if isinstance(route, Mount):
+        print(f"Mount: {route.path}")
+        for subroute in route.routes:
+            print(f"  - {subroute.path}")
+    else:
+        print(f"Route: {route.path}")
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=80)
